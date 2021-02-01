@@ -1,10 +1,10 @@
 /*
- * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
- * Cypress Semiconductor Corporation. All Rights Reserved.
+ * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
- * materials ("Software"), is owned by Cypress Semiconductor Corporation
- * or one of its subsidiaries ("Cypress") and is protected by and subject to
+ * materials ("Software") is owned by Cypress Semiconductor Corporation
+ * or one of its affiliates ("Cypress") and is protected by and subject to
  * worldwide patent protection (United States and foreign),
  * United States copyright laws and international treaty provisions.
  * Therefore, you may use this Software only as provided in the license
@@ -13,7 +13,7 @@
  * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
  * non-transferable license to copy, modify, and compile the Software
  * source code solely for use in connection with Cypress's
- * integrated circuit products. Any reproduction, modification, translation,
+ * integrated circuit products.  Any reproduction, modification, translation,
  * compilation, or representation of this Software except as specified
  * above is prohibited without the express written permission of Cypress.
  *
@@ -75,6 +75,10 @@
 #include "string.h"
 #include "wiced_bt_stack.h"
 #include "wiced_hal_puart.h"
+#include "wiced_timer.h"
+#if !defined(CYW20706A2) && !defined(CYW43012C0)
+#include "cycfg_pins.h"
+#endif
 
 #define HCI_TRACE_OVER_TRANSPORT    1   // Send trace messages over WICED HCI interface
 //#define TEST_HCI_CONTROL            1   // Use WICED HCI interface for test purposes
@@ -220,6 +224,7 @@ static void anc_trace_callback(wiced_bt_hci_trace_type_t type, uint16_t length, 
 
 #ifndef TEST_HCI_CONTROL
 uint32_t anc_app_timer_count=0;
+wiced_timer_t app_timer;
 static uint8_t c = 0;
 #endif
 
@@ -285,8 +290,9 @@ void anc_application_init()
 #endif
 
 #ifndef TEST_HCI_CONTROL
-#if defined(CYW20819A1)
-    wiced_platform_register_button_callback( APP_BUTTON, anc_interrupt_handler, NULL, WICED_PLATFORM_BUTTON_BOTH_EDGE);
+#if ( defined(CYW20719B1) || defined(CYW20721B1) || defined(CYW20735B1) || defined(CYW20819A1) || defined(CYW20721B2) || defined(CYW20719B2) )
+    /* Configure buttons available on the platform */
+    wiced_platform_register_button_callback( WICED_PLATFORM_BUTTON_1, anc_interrupt_handler, NULL, WICED_PLATFORM_BUTTON_BOTH_EDGE);
 #else
     /* Configure buttons available on the platform */
     wiced_hal_gpio_register_pin_for_interrupt( APP_BUTTON, anc_interrupt_handler, NULL );
@@ -321,7 +327,14 @@ void anc_application_init()
 #ifndef TEST_HCI_CONTROL
     gatt_status =  wiced_bt_start_advertisements(BTM_BLE_ADVERT_UNDIRECTED_HIGH, 0, NULL);
     WICED_BT_TRACE("wiced_bt_start_advertisements %d\n", gatt_status);
-    wiced_bt_app_start_timer( 1, 0, anc_app_timeout, NULL );
+    /* Starting the app timer */
+    if ( wiced_init_timer(&app_timer, anc_app_timeout, 0, WICED_SECONDS_PERIODIC_TIMER) == WICED_SUCCESS)
+    {
+        if ( wiced_start_timer(&app_timer, 1) != WICED_SUCCESS)
+        {
+            WICED_BT_TRACE("Start timer FAILED!!");
+        }
+    }
 #endif
 }
 
@@ -1371,9 +1384,8 @@ void anc_interrupt_handler(void* user_data, uint8_t value )
     static uint32_t enable=1;
     static uint8_t tc2 = 0;
 
-#if defined(CYW20819A1)
-    if ( wiced_hal_gpio_get_pin_input_status(APP_BUTTON) == wiced_platform_get_button_pressed_value(WICED_PLATFORM_BUTTON_1))
-
+#if ( defined(CYW20719B1) || defined(CYW20721B1) || defined(CYW20735B1) || defined(CYW20819A1) || defined(CYW20721B2) || defined(CYW20719B2) )
+    if ( wiced_hal_gpio_get_pin_input_status(WICED_GET_PIN_FOR_BUTTON(WICED_PLATFORM_BUTTON_1)) == wiced_platform_get_button_pressed_value(WICED_PLATFORM_BUTTON_1) )
 #else
     if ( wiced_hal_gpio_get_pin_input_status(APP_BUTTON) == WICED_BUTTON_PRESSED_VALUE )
 #endif
