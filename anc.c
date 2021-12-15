@@ -328,13 +328,8 @@ void anc_application_init()
     gatt_status =  wiced_bt_start_advertisements(BTM_BLE_ADVERT_UNDIRECTED_HIGH, 0, NULL);
     WICED_BT_TRACE("wiced_bt_start_advertisements %d\n", gatt_status);
     /* Starting the app timer */
-    if ( wiced_init_timer(&app_timer, anc_app_timeout, 0, WICED_SECONDS_PERIODIC_TIMER) == WICED_SUCCESS)
-    {
-        if ( wiced_start_timer(&app_timer, 1) != WICED_SUCCESS)
-        {
-            WICED_BT_TRACE("Start timer FAILED!!");
-        }
-    }
+    wiced_init_timer(&app_timer, anc_app_timeout, 0, WICED_SECONDS_PERIODIC_TIMER);
+    wiced_start_timer(&app_timer, 1);
 #endif
 }
 
